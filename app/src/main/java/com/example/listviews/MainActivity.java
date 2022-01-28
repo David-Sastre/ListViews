@@ -8,7 +8,12 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.RatingBar;
 import android.widget.TextView;
+
+import androidx.constraintlayout.widget.ConstraintLayout;
+
+import java.util.ArrayList;
 
 public class MainActivity extends ListActivity {
 
@@ -22,31 +27,75 @@ public class MainActivity extends ListActivity {
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
-        setContentView(R.layout.activity_main);
-        setListAdapter(new SpecialAdapter());
-        selection=(TextView)findViewById(R.id.selection);
-    }
-    public void onListItemClick(ListView parent, View v,
-                                int position, long id) {
-        selection.setText(items[position]);
+
+        ArrayList<RowModel> list=new ArrayList<RowModel>();
+
+        for (String s : items) {
+            list.add(new RowModel(s));
+        }
+
+        setListAdapter(new RatingAdapter(list));
     }
 
-    class SpecialAdapter extends ArrayAdapter<String> {
-        SpecialAdapter() {
-            super(MainActivity.this, R.layout.row, R.id.textViewRow, items);
+    private RowModel getModel(int position) {
+        return(((RatingAdapter)getListAdapter()).getItem(position));
+    }
+
+    class RatingAdapter extends ArrayAdapter<RowModel> {
+        RatingAdapter(ArrayList<RowModel> list) {
+            super(MainActivity.this, R.layout.row, R.id.textViewRow, list);
         }
 
         public View getView(int position, View convertView,
                             ViewGroup parent) {
             View row=super.getView(position, convertView, parent);
-            ImageView icon=(ImageView)row.findViewById(R.id.imageRow);
-            if (items[position].length()>4) {
-                icon.setBackgroundResource(R.drawable.delete);
+            ViewHolder holder=(ViewHolder)row.getTag();
+
+            if (holder==null) {
+                holder=new ViewHolder(row);
+                row.setTag(holder);
+
+                RatingBar.OnRatingBarChangeListener l=
+                        new RatingBar.OnRatingBarChangeListener() {
+                            public void onRatingChanged(RatingBar ratingBar,
+                                                        float rating,
+                                                        boolean fromTouch) {
+                                Integer myPosition=(Integer)ratingBar.getTag();
+                                RowModel model=getModel(myPosition);
+
+                                model.rating=rating;
+
+                                ConstraintLayout parent=(ConstraintLayout)ratingBar.getParent();
+                                TextView label=(TextView)parent.findViewById(R.id.textViewRow);
+
+                                label.setText(model.toString());
+                            }
+                        };
+                holder.rate.setOnRatingBarChangeListener(l);
             }
-            else {
-                icon.setBackgroundResource(R.drawable.check);
-            }
+            RowModel model=getModel(position);
+
+            holder.rate.setTag(new Integer(position));
+            holder.rate.setRating(model.rating);
+
             return(row);
+        }
+    }
+
+    class RowModel {
+        String label;
+        float rating=2.0f;
+
+        RowModel(String label) {
+            this.label=label;
+        }
+
+        public String toString() {
+            if (rating>=3.0) {
+                return(label.toUpperCase());
+            }
+
+            return(label);
         }
     }
 }
